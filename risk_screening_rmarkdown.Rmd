@@ -1,0 +1,70 @@
+---
+title: "Screening Text for Risk Programmatically"
+author: "Michael Mullarkey"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 5
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+geometry: margin=0.50in
+---
+
+```{r setup, include=FALSE, cache = FALSE}
+require("knitr")
+## setting working directory
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE, warning = FALSE, message = FALSE, include = FALSE)
+
+```
+
+```{r loading packages}
+
+if(!require(tidymodels)){install.packages('tidymodels')}
+library(tidymodels)
+if(!require(tidyverse)){install.packages('tidyverse')}
+library(tidyverse)
+if(!require(tidytext)){install.packages('tidytext')}
+library(tidytext)
+if(!require(readr)){install.packages('readr')}
+library(readr)
+if(!require(skimr)){install.packages('skimr')}
+library(skimr)
+
+```
+
+```{r loading labeled tweet data to test whether it works}
+
+## Data labeled for SITB or no SITB content already and described in this post: https://towardsdatascience.com/building-a-suicidal-tweet-classifier-using-nlp-ff6ccd77e971
+
+urlfile="https://raw.githubusercontent.com/AminuIsrael/Predicting-Suicide-Ideation/master/suicidal_data.csv"
+
+sitb_text <- read_csv(url(urlfile))
+
+# No leading or trailing whitespace in the character variables
+
+skim(sitb_text)
+
+# Can also look at the data using glimpse
+
+glimpse(sitb_text)
+
+# Let's convert to more meaningful metric rather than 1/0
+
+sitb_text <- sitb_text %>% 
+  mutate(label = factor(case_when(
+    label == 1 ~ "SITB",
+    label == 0 ~ "No SITB",
+    TRUE ~ NA_character_
+    
+  )))
+
+# Let's see the breakdown of SITB/No SITB Tweets, looks pretty well-balanced
+
+sitb_text %>% 
+  count(label) %>% 
+  mutate(percent = 100*(n/sum(n)))
+
+```
+
