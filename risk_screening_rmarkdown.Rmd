@@ -108,7 +108,43 @@ tidy_ex %>%
 
 ## Now want to map over a bunch of words and attach them to the original dataframe
 
+words <- c("suicid", "(?<!s)kill", "(?<!stu|la)die(?!go)", "death", "dead(?!line)", "harm", "hurt", 
+    "murder", "cut(?!e)", "stab", "burn", "slice", "slash", "slit", "split", 
+    "(?<!c)hang(?! *out|ing *out| *around|ing *around)", 
+    "shoot", "fire(?!d)", "lynch", "blow.*up", "blow.*brains", "blow.*head", 
+    "knife", "razor", "blade", "trigger", "gun", "rifle", "pistol", "glock", "revolver", 
+    "muzzle", "bomb", "fertilizer", "rope", "noose", 
+    "wrist", "throat", "vein", "artery", 
+    "blood", "bleed", 
+    "overdose", "pill", "needle", "poison", "bleach", 
+    "(?<!anti)depress", "despise", "hate", "worthless", "burden", 
+    "end.*life", "take.*life", "better *off", "who *cares", "why *bother", 
+    "doesn'?t *matter", "does *not *matter", 
+    "(?<!never |don't |don't ever |do not ever |dont |dont ever )give *up", 
+    "gave *up", "given *up", 
+    "no *one *underst", "nobody *underst",
+    "no *one *get", "nobody *gets",
+    "no *hope", "don'?t *have *hope", "not *have *hope", "lost *hope", 
+    "crazy", "dark", "abus")
 
+sitb_detected <- map_dfc(words, ~{
+  
+  sitb_text %>% 
+    detect_word(word = .x)
+  
+}) %>% 
+  dplyr::select(-contains("label"),-contains("tweet")) %>% 
+  bind_cols(sitb_text) %>% 
+  rowwise() %>% 
+  mutate(any_detect = any(c_across(suicid:abus))) %>% # Seeing if we can detect any of the words
+  ungroup() %>% 
+  relocate(label, any_detect, tweet, everything()) %>% 
+  print()
+
+sitb_detected %>% 
+  group_by(label, any_detect) %>% 
+  tally() %>% 
+  mutate(percent = 100*(n/sum(n)))
 
 
 ```
