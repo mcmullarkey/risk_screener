@@ -136,9 +136,11 @@ sitb_detected <- map_dfc(words, ~{
   dplyr::select(-contains("label"),-contains("tweet")) %>% 
   bind_cols(sitb_text) %>% 
   rowwise() %>% 
-  mutate(any_detect = any(c_across(suicid:abus))) %>% # Seeing if we can detect any of the words
+  mutate(any_detect = any(c_across(suicid:abus)),
+         sum_detect = sum(c_across(suicid:abus), na.rm = T)) %>% # Seeing if we can detect any of the words
   ungroup() %>% 
-  relocate(label, any_detect, tweet, everything()) %>% 
+  relocate(label, any_detect, sum_detect, tweet, everything()) %>% 
+  arrange(desc(sum_detect)) %>% 
   print()
 
 ```
@@ -163,6 +165,24 @@ sitb_detected %>%
 conf_mat(truth = label, estimate = any_detect) %>% 
   summary()
 
+
+```
+```{r looking at breakdown of number of risk words used in the tweet}
+
+sitb_detected %>% 
+  group_by(label, sum_detect) %>% 
+  tally() %>% 
+  mutate(percent = 100*(n/sum(n)))
+
+```
+
+
+```{r limiting to rows that screened positive for any of the words}
+
+sitb_detected %>% 
+  filter(any_detect == TRUE) %>% 
+  count(label)
+  
 
 ```
 
