@@ -72,7 +72,7 @@ sitb_text %>%
   mutate(percent = 100*(n/sum(n)))
 
 ```
-```{r detecting presence of certain words}
+```{r detecting presence of certain risk related words}
 
 # What we want is first a tidy function that can return Yes or No for the presence of a certain word/regular expression, which we can do with stringr
 
@@ -141,10 +141,27 @@ sitb_detected <- map_dfc(words, ~{
   relocate(label, any_detect, tweet, everything()) %>% 
   print()
 
+```
+
+```{r what proportion of SITB and non SITB tweets have these words in them}
+
+# See what percentage of the SITB and non=SITB labeled tweets have any word detected as true
+
 sitb_detected %>% 
   group_by(label, any_detect) %>% 
   tally() %>% 
   mutate(percent = 100*(n/sum(n)))
+
+sitb_detected %>% 
+  mutate(any_detect = factor(case_when(
+    
+    any_detect == FALSE ~ "No SITB",
+    any_detect == TRUE ~ "SITB",
+    TRUE ~ NA_character_
+    
+  ))) %>% 
+conf_mat(truth = label, estimate = any_detect) %>% 
+  summary()
 
 
 ```
