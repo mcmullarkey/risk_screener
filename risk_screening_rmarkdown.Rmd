@@ -31,6 +31,10 @@ if(!require(readr)){install.packages('readr')}
 library(readr)
 if(!require(skimr)){install.packages('skimr')}
 library(skimr)
+if(!require(glue)){install.packages('glue')}
+library(glue)
+if(!require(diffdf)){install.packages('diffdf')}
+library(diffdf)
 
 ```
 
@@ -58,13 +62,54 @@ sitb_text <- sitb_text %>%
     label == 0 ~ "No SITB",
     TRUE ~ NA_character_
     
-  )))
+  ))) %>% 
+  na.omit() # Dropping NAs
 
 # Let's see the breakdown of SITB/No SITB Tweets, looks pretty well-balanced
 
 sitb_text %>% 
   count(label) %>% 
   mutate(percent = 100*(n/sum(n)))
+
+```
+```{r detecting presence of certain words}
+
+# What we want is first a tidy function that can return Yes or No for the presence of a certain word/regular expression, which we can do with stringr
+
+# No function
+
+no_func_ex <- sitb_text %>% 
+  mutate(suic = str_detect(tweet, "suic")) %>% 
+  print()
+
+# Tidy function
+
+detect_word <- function(.data, word){
+  
+  .data %>% 
+  mutate("{word}" := str_detect(tweet, word))
+  
+}
+
+tidy_ex <- sitb_text %>% 
+  detect_word(word = "suic") %>% 
+  print()
+
+# Testing base and tidy function return the same dataframe
+
+diffdf(no_func_ex, tidy_ex)
+
+# Look at the percent of tweets that have an explicit mention of suicide in them by label, and see that there is mention of suicide in some tweets not labeled as containing SITB
+
+tidy_ex %>% 
+  group_by(label, suic) %>% 
+  tally() %>% 
+  mutate(percent = 100*(n/sum(n)))
+
+## Now want to map over a bunch of words and attach them to the original dataframe
+
+
+
 
 ```
 
