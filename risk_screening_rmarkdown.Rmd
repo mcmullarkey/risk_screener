@@ -35,6 +35,9 @@ if(!require(glue)){install.packages('glue')}
 library(glue)
 if(!require(diffdf)){install.packages('diffdf')}
 library(diffdf)
+if(!require(doMC)){install.packages('doMC')}
+library(doMC)
+
 
 ```
 
@@ -176,13 +179,98 @@ sitb_detected %>%
 
 ```
 
+```{r using just the presence absence and sum data to predict label}
 
-```{r limiting to rows that screened positive for any of the words}
+# Removing the text
 
-sitb_detected %>% 
-  filter(any_detect == TRUE) %>% 
-  count(label)
-  
+sitb_no_text <- sitb_detected %>% 
+  dplyr::select(-tweet)
+
+# Doing a reproducible training/testing split
+
+set.seed(33)
+split_sitb <- initial_split(sitb_no_text, prop = 0.8, strata = label)
+
+train_sitb <- training(split_sitb)
+test_sitb <- testing(split_sitb)
+
+# Creating a boosted tree model
+
+xgb_spec <- boost_tree(
+  trees = 1000, 
+  tree_depth = tune(), min_n = tune(), 
+  loss_reduction = tune(),                     ## first three: model complexity
+  sample_size = tune(), mtry = tune(),         ## randomness
+  learn_rate = tune(),                         ## step size
+) %>% 
+  set_engine("xgboost") %>% 
+  set_mode("classification")
+
+# We'll just use grid search here
+
+xgb_grid <- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), train_sitb),
+  learn_rate(),
+  size = 30
+)
+
+# Create recipe
+
+rec_boost <- 
+  recipe(label ~ ., data = train_sitb)
+
+## And add the formula
+
+xgb_wf <- workflow() %>%
+  add_recipe(rec_boost) %>%
+  add_model(xgb_spec)
+
+xgb_wf
+
+# Let's create cv folds
+
+set.seed(33)
+sitb_folds <- vfold_cv(train_sitb, strata = label)
+
+# Setting up multicore
+
+doMC::registerDoMC(cores = 7)
+
+# Tuning
+
+xgb_res <- tune_grid(
+  xgb_wf,
+  resamples = sitb_folds,
+  grid = xgb_grid,
+  control = control_grid(save_pred = TRUE)
+)
 
 ```
+
+
+```{r running the final boosted tree model with best hyperparameters}
+
+best_auc <- select_best(xgb_res, "roc_auc")
+
+final_xgb <- xgb_wf %>% 
+  finalize_workflow(best_auc)
+
+tic()
+set.seed(33)
+boost_fit_rs <-
+  final_xgb %>% 
+  fit_resamples(train_sitb, control = keep_pred)
+toc()
+
+boost_fit_rs %>% 
+  collect_metrics()
+
+
+```
+
+
 
