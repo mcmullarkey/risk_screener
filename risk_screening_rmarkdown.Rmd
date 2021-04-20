@@ -43,6 +43,8 @@ if(!require(torch)){install.packages('torch')}
 library(torch)
 if(!require(tabnet)){install.packages('tabnet')}
 library(tabnet)
+if(!require(vip)){install.packages('vip')}
+library(vip)
 
 
 ```
@@ -271,7 +273,7 @@ tic()
 set.seed(33)
 boost_fit_rs <-
   final_xgb %>% 
-  fit_resamples(sitb_foldsß, control = keep_pred)
+  fit_resamples(sitb_folds, control = keep_pred)
 toc()
 
 boost_fit_rs %>% 
@@ -329,18 +331,55 @@ nn_pred <- collect_predictions(nn_fit_rs, summarize = TRUE)
 
 ```
 
-```{r fitting both models to test data}
+```{r fitting the xgboost model to test data}
 
+## See basically 0 decrement in model fit on the test data (literally .0001 difference in AUC value)
 
+sitb_fit <- last_fit(final_xgb, split_sitb)
+collect_metrics(sitb_fit)
+
+```
+```{r plotting auc curve}
+
+collect_predictions(sitb_fit) %>%
+  group_by(id) %>%
+  roc_curve(label, `.pred_No SITB`) %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line(size = 1.5, color = "midnightblue") +
+  geom_abline(
+    lty = 2, alpha = 0.5,
+    color = "gray50",
+    size = 1.2
+  ) +
+  coord_equal()
+
+```
+```{r looking at metrics beyond auc}
+
+collect_predictions(sitb_fit) %>%
+conf_mat(truth = label, estimate = .pred_class) %>% 
+  summary()
 
 ```
 
 
-```{r saving the models}
+```{r looking at feature importance}
+
+sitb_imp <- sitb_fit$.workflow[[1]] %>%
+  pull_workflow_fit() %>% 
+  vip() %>% 
+  print()
+
+```
+
+
+```{r saving the model}
 
 # Use the code from the end of this github doc: https://github.com/juliasilge/modelops-playground/blob/master/train-model/train.md
 # Also reference Julia Silge's answer to this question: https://stackoverflow.com/questions/66018457/r-tidymodels-what-objects-to-save-for-use-in-production-after-fitting-a-recipe
 # Also, an example plumber API to save the model to if we want/need: https://github.com/juliasilge/modelops-playground/blob/master/crash-api/plumber.R
+
+
 
 ```
 
