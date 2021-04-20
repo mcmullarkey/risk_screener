@@ -37,6 +37,8 @@ if(!require(diffdf)){install.packages('diffdf')}
 library(diffdf)
 if(!require(doMC)){install.packages('doMC')}
 library(doMC)
+if(!require(tictoc)){install.packages('tictoc')}
+library(tictoc)
 
 
 ```
@@ -196,7 +198,7 @@ test_sitb <- testing(split_sitb)
 
 # Creating a boosted tree model
 
-xgb_spec <- boost_tree(
+xgb_mod <- boost_tree(
   trees = 1000, 
   tree_depth = tune(), min_n = tune(), 
   loss_reduction = tune(),                     ## first three: model complexity
@@ -206,35 +208,26 @@ xgb_spec <- boost_tree(
   set_engine("xgboost") %>% 
   set_mode("classification")
 
-# We'll just use grid search here
-
-xgb_grid <- grid_latin_hypercube(
-  tree_depth(),
-  min_n(),
-  loss_reduction(),
-  sample_size = sample_prop(),
-  finalize(mtry(), train_sitb),
-  learn_rate(),
-  size = 30
-)
-
 # Create recipe
 
 rec_boost <- 
   recipe(label ~ ., data = train_sitb)
 
-## And add the formula
+## And add the recipe + model to workflow
 
 xgb_wf <- workflow() %>%
   add_recipe(rec_boost) %>%
-  add_model(xgb_spec)
+  add_model(xgb_mod)
 
-xgb_wf
+# We'll use bayesian optimization to find hyperparameters
+
+xgb_set <- parameters(xgb_wf) %>% 
+  update(mtry = mtry(c(2L, 20L)))
 
 # Let's create cv folds
 
 set.seed(33)
-sitb_folds <- vfold_cv(train_sitb, strata = label)
+sitb_folds <- vfold_cv(train_sitb, strata = label, repeats = 5)
 
 # Setting up multicore
 
@@ -242,19 +235,28 @@ doMC::registerDoMC(cores = 7)
 
 # Tuning
 
-xgb_res <- tune_grid(
-  xgb_wf,
-  resamples = sitb_folds,
-  grid = xgb_grid,
-  control = control_grid(save_pred = TRUE)
-)
+keep_pred <- control_resamples(save_pred = T)
+
+tic()
+set.seed(33)
+xgb_tune_rs <-
+  xgb_wf %>% 
+  tune_bayes(
+    resamples = sitb_folds,
+    param_info = xgb_set,
+    initial = 5,
+    iter = 20,
+    metrics = metric_set(roc_auc),
+    control = control_bayes(no_improve = 5, verbose = TRUE)
+  )
+toc()
 
 ```
 
 
 ```{r running the final boosted tree model with best hyperparameters}
 
-best_auc <- select_best(xgb_res, "roc_auc")
+best_auc <- select_best(xgb_tune_rs, "roc_auc")
 
 final_xgb <- xgb_wf %>% 
   finalize_workflow(best_auc)
@@ -263,11 +265,13 @@ tic()
 set.seed(33)
 boost_fit_rs <-
   final_xgb %>% 
-  fit_resamples(train_sitb, control = keep_pred)
+  fit_resamples(sitb_foldsß, control = keep_pred)
 toc()
 
 boost_fit_rs %>% 
-  collect_metrics()
+  collect_metrics(summarize = TRUE)
+
+xgb_pred <- collect_predictions(boost_fit_rs, summarize = TRUE)
 
 
 ```
