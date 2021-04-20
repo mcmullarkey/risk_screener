@@ -147,8 +147,8 @@ sitb_detected <- map_dfc(words, ~{
   dplyr::select(-contains("label"),-contains("tweet")) %>% 
   bind_cols(sitb_text) %>% 
   rowwise() %>% 
-  mutate(any_detect = any(c_across(suicid:abus)),
-         sum_detect = sum(c_across(suicid:abus), na.rm = T)) %>% # Seeing if we can detect any of the words
+  mutate(any_detect = any(c_across(suicid:abus)), # Seeing if any of the words show up in the text (TRUE if yes, FALSE if no words are in the text)
+         sum_detect = sum(c_across(suicid:abus), na.rm = T)) %>% # Seeing how many of the words show up in the text
   ungroup() %>% 
   relocate(label, any_detect, sum_detect, tweet, everything()) %>% 
   arrange(desc(sum_detect)) %>% 
