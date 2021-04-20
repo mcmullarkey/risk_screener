@@ -276,5 +276,10 @@ xgb_pred <- collect_predictions(boost_fit_rs, summarize = TRUE)
 
 ```
 
+## Next Steps
 
+* Add features from the text to the model
+* Use the tabnet model on all features to see if we can improve performance
+* Work on extending to multiple columns of text (Next version)
+* Work on extending to knowing multiple rows are the same person (Next version)
 
