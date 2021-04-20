@@ -379,7 +379,9 @@ sitb_imp <- sitb_fit$.workflow[[1]] %>%
 # Also reference Julia Silge's answer to this question: https://stackoverflow.com/questions/66018457/r-tidymodels-what-objects-to-save-for-use-in-production-after-fitting-a-recipe
 # Also, an example plumber API to save the model to if we want/need: https://github.com/juliasilge/modelops-playground/blob/master/crash-api/plumber.R
 
+sitb_wf_model <- sitb_fit$.workflow[[1]]
 
+saveRDS(sitb_wf_model, "sitb-wf-model.rds")
 
 ```
 
