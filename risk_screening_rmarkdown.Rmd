@@ -39,6 +39,10 @@ if(!require(doMC)){install.packages('doMC')}
 library(doMC)
 if(!require(tictoc)){install.packages('tictoc')}
 library(tictoc)
+if(!require(torch)){install.packages('torch')}
+library(torch)
+if(!require(tabnet)){install.packages('tabnet')}
+library(tabnet)
 
 
 ```
@@ -275,6 +279,54 @@ xgb_pred <- collect_predictions(boost_fit_rs, summarize = TRUE)
 
 
 ```
+
+```{r predicting using a neural network}
+
+# Creating a boosted tree model
+
+nn_mod <- tabnet(epochs = 50, batch_size = 128) %>%
+  set_engine("torch", verbose = TRUE) %>%
+  set_mode("classification")
+
+# Create recipe
+
+rec_nn <- 
+  recipe(label ~ ., data = train_sitb) %>% 
+  step_normalize(all_numeric())
+
+## And add the recipe + model to workflow
+
+nn_wf <- workflow() %>%
+  add_recipe(rec_nn) %>%
+  add_model(nn_mod)
+
+# Let's create cv folds
+
+set.seed(33)
+sitb_folds <- vfold_cv(train_sitb, strata = label, repeats = 5)
+
+# Setting up multicore
+
+doMC::registerDoMC(cores = 7)
+
+# Fitting via cross-validation
+
+keep_pred <- control_resamples(save_pred = T)
+
+tic()
+set.seed(33)
+nn_fit_rs <-
+  nn_wf %>% 
+  fit_resamples(sitb_folds, control = keep_pred)
+toc()
+
+nn_fit_rs %>% 
+  collect_metrics(summarize = TRUE)
+
+nn_pred <- collect_predictions(nn_fit_rs, summarize = TRUE)
+
+```
+
 
 ## Next Steps
 
