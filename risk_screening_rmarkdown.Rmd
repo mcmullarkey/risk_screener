@@ -265,6 +265,8 @@ best_auc <- select_best(xgb_tune_rs, "roc_auc")
 final_xgb <- xgb_wf %>% 
   finalize_workflow(best_auc)
 
+## Once hyperparameters are selected in ~45 minutes, the model fitting itself only takes ~2 minutes on 7 cores
+
 tic()
 set.seed(33)
 boost_fit_rs <-
@@ -282,7 +284,7 @@ xgb_pred <- collect_predictions(boost_fit_rs, summarize = TRUE)
 
 ```{r predicting using a neural network}
 
-# Creating a boosted tree model
+# Creating a tabnet neural network model
 
 nn_mod <- tabnet(epochs = 50, batch_size = 128) %>%
   set_engine("torch", verbose = TRUE) %>%
@@ -309,7 +311,7 @@ sitb_folds <- vfold_cv(train_sitb, strata = label, repeats = 5)
 
 doMC::registerDoMC(cores = 7)
 
-# Fitting via cross-validation
+# Fitting via cross-validation, took nearly 2.5 hours to run on 7 cores
 
 keep_pred <- control_resamples(save_pred = T)
 
@@ -327,11 +329,25 @@ nn_pred <- collect_predictions(nn_fit_rs, summarize = TRUE)
 
 ```
 
+```{r fitting both models to test data}
+
+
+
+```
+
+
+```{r saving the models}
+
+# Use the code from the end of this github doc: https://github.com/juliasilge/modelops-playground/blob/master/train-model/train.md
+# Also reference Julia Silge's answer to this question: https://stackoverflow.com/questions/66018457/r-tidymodels-what-objects-to-save-for-use-in-production-after-fitting-a-recipe
+# Also, an example plumber API to save the model to if we want/need: https://github.com/juliasilge/modelops-playground/blob/master/crash-api/plumber.R
+
+```
+
 
 ## Next Steps
 
-* Add features from the text to the model
-* Use the tabnet model on all features to see if we can improve performance
+* Add features from the text to the model (Next version)
 * Work on extending to multiple columns of text (Next version)
 * Work on extending to knowing multiple rows are the same person (Next version)
 
