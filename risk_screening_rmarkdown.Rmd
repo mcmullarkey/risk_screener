@@ -427,8 +427,12 @@ tweet_ex_text <- recipe(label ~ ., data = tweet_ex_clean) %>%
   bake(new_data = tweet_ex_clean) %>% 
   bind_cols(tweet_ex_clean %>% dplyr::select(tweet))
   
+# Getting probabilities as well as predicted class from model
 
-predict(sitb_wf_model, tweet_ex_text)
+predict(sitb_wf_model, tweet_ex_text, type = c("prob")) %>% 
+  bind_cols(predict(sitb_wf_model, tweet_ex_text, type = c("class")))
+
+?predict
 
 ```
 
