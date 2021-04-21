@@ -432,8 +432,6 @@ tweet_ex_text <- recipe(label ~ ., data = tweet_ex_clean) %>%
 predict(sitb_wf_model, tweet_ex_text, type = c("prob")) %>% 
   bind_cols(predict(sitb_wf_model, tweet_ex_text, type = c("class")))
 
-?predict
-
 ```
 
 
