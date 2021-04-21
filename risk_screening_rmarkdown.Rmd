@@ -385,6 +385,54 @@ saveRDS(sitb_wf_model, "sitb-wf-model.rds")
 
 ```
 
+```{r}
+
+# Predict on the text of my most recent tweet at time of model fit
+
+tweet_ex <- tribble(~tweet, ~label,
+        "One of my machine learning models is taking hours to run, so I'm finally diving into Statistical Rethinking by @rlmcelreath
+ 
+
+I don't think I've ever read a technical text that cuts to the core of important problems so quickly (while using easy to understand language too!)", "Unknown",
+"When people show you who they are, believe them", "Unknown") %>% 
+  mutate(label = as.factor(label))
+  
+tweet_ex_clean <- map_dfc(words, ~{
+  
+  tweet_ex %>% 
+    detect_word(word = .x)
+  
+}) %>% 
+  dplyr::select(-contains("label"),-contains("tweet")) %>% 
+  bind_cols(tweet_ex) %>% 
+  rowwise() %>% 
+  mutate(any_detect = any(c_across(suicid:abus)), # Seeing if any of the words show up in the text (TRUE if yes, FALSE if no words are in the text)
+         sum_detect = sum(c_across(suicid:abus), na.rm = T)) %>% # Seeing how many of the words show up in the text
+  ungroup() %>% 
+  relocate(label, any_detect, sum_detect, tweet, everything()) %>% 
+  arrange(desc(sum_detect)) %>% 
+  print()
+
+# If we just predict based on the model without getting text data, this tweet looks like a SITB tweet
+
+predict(sitb_wf_model, tweet_ex_clean)
+
+# Cleaning to get text info
+
+tweet_ex_text <- recipe(label ~ ., data = tweet_ex_clean) %>% 
+  step_tokenize(tweet) %>%
+  step_tokenfilter(tweet, max_tokens = 1e3) %>%
+  step_tfidf(tweet) %>% 
+  prep() %>% 
+  bake(new_data = tweet_ex_clean) %>% 
+  bind_cols(tweet_ex_clean %>% dplyr::select(tweet))
+  
+
+predict(sitb_wf_model, tweet_ex_text)
+
+```
+
+
 
 ## Next Steps
 
