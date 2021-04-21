@@ -436,7 +436,6 @@ predict(sitb_wf_model, tweet_ex_text)
 
 ## Next Steps
 
-* Add features from the text to the model (Next version)
 * Work on extending to multiple columns of text (Next version)
 * Work on extending to knowing multiple rows are the same person (Next version)
 
