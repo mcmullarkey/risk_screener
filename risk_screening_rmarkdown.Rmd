@@ -27,6 +27,8 @@ if(!require(tidyverse)){install.packages('tidyverse')}
 library(tidyverse)
 if(!require(tidytext)){install.packages('tidytext')}
 library(tidytext)
+if(!require(textrecipes)){install.packages('textrecipes')}
+library(textrecipes)
 if(!require(readr)){install.packages('readr')}
 library(readr)
 if(!require(skimr)){install.packages('skimr')}
@@ -189,15 +191,10 @@ sitb_detected %>%
 
 ```{r using just the presence absence and sum data to predict label}
 
-# Removing the text
-
-sitb_no_text <- sitb_detected %>% 
-  dplyr::select(-tweet)
-
 # Doing a reproducible training/testing split
 
 set.seed(33)
-split_sitb <- initial_split(sitb_no_text, prop = 0.8, strata = label)
+split_sitb <- initial_split(sitb_detected, prop = 0.8, strata = label)
 
 train_sitb <- training(split_sitb)
 test_sitb <- testing(split_sitb)
@@ -217,7 +214,10 @@ xgb_mod <- boost_tree(
 # Create recipe
 
 rec_boost <- 
-  recipe(label ~ ., data = train_sitb)
+  recipe(label ~ ., data = train_sitb) %>% 
+  step_tokenize(tweet) %>%
+  step_tokenfilter(tweet, max_tokens = 1e3) %>%
+  step_tfidf(tweet)
 
 ## And add the recipe + model to workflow
 
@@ -333,7 +333,7 @@ nn_pred <- collect_predictions(nn_fit_rs, summarize = TRUE)
 
 ```{r fitting the xgboost model to test data}
 
-## See basically 0 decrement in model fit on the test data (literally .0001 difference in AUC value)
+## Model actually fits better in the test set (Previous comment was based on a misread of out of fold results, hadn't run anything on the test set yet)
 
 sitb_fit <- last_fit(final_xgb, split_sitb)
 collect_metrics(sitb_fit)
