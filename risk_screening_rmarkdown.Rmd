@@ -345,7 +345,7 @@ collect_predictions(sitb_fit) %>%
   group_by(id) %>%
   roc_curve(label, `.pred_No SITB`) %>%
   ggplot(aes(x = 1 - specificity, y = sensitivity)) +
-  geom_line(size = 1.5, color = "midnightblue") +
+  geom_line(size = 1.5, color = "dodgerblue") +
   geom_abline(
     lty = 2, alpha = 0.5,
     color = "gray50",
